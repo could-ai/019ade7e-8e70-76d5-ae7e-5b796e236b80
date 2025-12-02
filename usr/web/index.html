@@ -1,38 +1,517 @@
 <!DOCTYPE html>
-<html>
+<html lang="ar">
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite Rift Runner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #9f00ff;
+            --secondary-color: #00f2ff;
+            --background-color: #0c001f;
+            --text-color: #ffffff;
+            --danger-color: #ff005d;
+        }
 
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: 'Cairo', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
 
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+        #game-container {
+            width: 100%;
+            max-width: 800px;
+            height: 100%;
+            max-height: 600px;
+            position: relative;
+            border: 3px solid var(--primary-color);
+            box-shadow: 0 0 25px var(--secondary-color), inset 0 0 25px var(--primary-color);
+            background: #000;
+        }
 
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
-  <base href="$FLUTTER_BASE_HREF">
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
 
-  <meta charset="UTF-8">
-  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(12, 0, 31, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            backdrop-filter: blur(5px);
+            z-index: 10;
+        }
 
-  <!-- iOS meta tags & icons -->
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="couldai_user_app">
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+        .hidden {
+            display: none;
+        }
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+        h1, h2 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--secondary-color);
+            text-shadow: 0 0 10px var(--secondary-color);
+            margin: 0;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
 
-  <title>couldai_user_app</title>
-  <link rel="manifest" href="manifest.json">
+        h2 {
+            font-size: 2.2rem;
+            color: var(--text-color);
+        }
+
+        p {
+            font-size: 1.2rem;
+            max-width: 80%;
+        }
+
+        .btn {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            padding: 15px 30px;
+            margin: 10px;
+            border: 2px solid var(--secondary-color);
+            background: transparent;
+            color: var(--secondary-color);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-shadow: 0 0 5px var(--secondary-color);
+            box-shadow: 0 0 10px var(--secondary-color), inset 0 0 10px var(--secondary-color);
+        }
+
+        .btn:hover {
+            background: var(--secondary-color);
+            color: var(--background-color);
+            box-shadow: 0 0 25px var(--secondary-color);
+        }
+
+        #in-game-ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            pointer-events: none;
+            text-shadow: 0 0 5px #000;
+        }
+        
+        #ultimate-bar-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 20px;
+            border: 2px solid var(--secondary-color);
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        #ultimate-bar {
+            width: 0%;
+            height: 100%;
+            background-color: var(--primary-color);
+            transition: width 0.2s;
+        }
+    </style>
 </head>
 <body>
-  <script src="flutter_bootstrap.js" async></script>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- In-Game UI -->
+        <div id="in-game-ui" class="hidden">
+            <div id="score">Score: 0</div>
+            <div id="shards">Shards: 0</div>
+        </div>
+        <div id="ultimate-bar-container" class="hidden">
+            <div id="ultimate-bar"></div>
+        </div>
+
+        <!-- Main Menu -->
+        <div id="main-menu" class="ui-overlay">
+            <h1>Infinite Rift Runner</h1>
+            <p>اركض عبر الأكوان المتعددة، اهزم الزعماء، وأصبح الحارس الأخير!</p>
+            <button id="start-game-btn" class="btn">ابدأ اللعبة</button>
+            <button id="store-btn" class="btn" disabled>المتجر (قريباً)</button>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="ui-overlay hidden">
+            <h1>انتهت اللعبة</h1>
+            <h2 id="final-score"></h2>
+            <p>لقد قاتلت ببسالة، لكن الشرخ لا يرحم.</p>
+            <button id="restart-game-btn" class="btn">حاول مجدداً</button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- Setup ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameContainer = document.getElementById('game-container');
+
+        const mainMenu = document.getElementById('main-menu');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const inGameUI = document.getElementById('in-game-ui');
+        const ultimateBarContainer = document.getElementById('ultimate-bar-container');
+
+        const startGameBtn = document.getElementById('start-game-btn');
+        const restartGameBtn = document.getElementById('restart-game-btn');
+        
+        const scoreEl = document.getElementById('score');
+        const shardsEl = document.getElementById('shards');
+        const finalScoreEl = document.getElementById('final-score');
+        const ultimateBar = document.getElementById('ultimate-bar');
+
+        let canvasWidth, canvasHeight;
+
+        function resizeCanvas() {
+            canvasWidth = gameContainer.clientWidth;
+            canvasHeight = gameContainer.clientHeight;
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // --- Game State ---
+        let gameState = 'menu'; // menu, playing, gameover
+        let gameSpeed = 5;
+        let score = 0;
+        let shards = 0;
+        let lastTime = 0;
+        let gameFrame = 0;
+        
+        // --- Player ---
+        const player = {
+            x: 50,
+            y: canvasHeight - 100,
+            width: 50,
+            height: 50,
+            velocityY: 0,
+            gravity: 0.8,
+            jumpStrength: -18,
+            grounded: true,
+            jumps: 2,
+            dashSpeed: 25,
+            isDashing: false,
+            dashFrames: 0,
+            ultimateCharge: 0,
+            ultimateMax: 100,
+            isUltimateActive: false,
+            ultimateFrames: 0,
+            color: 'var(--secondary-color)',
+            
+            draw() {
+                ctx.fillStyle = this.isUltimateActive ? 'var(--primary-color)' : this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                if (this.isDashing) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.fillRect(this.x - this.width * 0.5, this.y, this.width * 1.5, this.height);
+                }
+            },
+
+            update() {
+                // Apply gravity
+                if (!this.grounded) {
+                    this.velocityY += this.gravity;
+                    this.y += this.velocityY;
+                }
+
+                // Ground check
+                if (this.y + this.height >= canvasHeight - 50) {
+                    this.y = canvasHeight - 50 - this.height;
+                    this.velocityY = 0;
+                    this.grounded = true;
+                    this.jumps = 2;
+                }
+                
+                // Dash logic
+                if (this.isDashing) {
+                    this.dashFrames--;
+                    if (this.dashFrames <= 0) {
+                        this.isDashing = false;
+                    }
+                }
+
+                // Ultimate logic
+                if (this.isUltimateActive) {
+                    this.ultimateFrames--;
+                    if (this.ultimateFrames <= 0) {
+                        this.isUltimateActive = false;
+                    }
+                }
+            },
+
+            jump() {
+                if (this.jumps > 0) {
+                    this.velocityY = this.jumpStrength;
+                    this.grounded = false;
+                    this.jumps--;
+                }
+            },
+            
+            dash() {
+                if (!this.isDashing) {
+                    this.isDashing = true;
+                    this.dashFrames = 10; // Dash for 10 frames
+                }
+            },
+
+            activateUltimate() {
+                if (this.ultimateCharge >= this.ultimateMax) {
+                    this.isUltimateActive = true;
+                    this.ultimateFrames = 300; // Active for 5 seconds (60fps * 5)
+                    this.ultimateCharge = 0;
+                }
+            },
+
+            chargeUltimate(amount) {
+                if(this.ultimateCharge < this.ultimateMax) {
+                    this.ultimateCharge += amount;
+                }
+            }
+        };
+
+        // --- World & Obstacles ---
+        let obstacles = [];
+        let worldType = 'jungle';
+        let worldChangeScore = 500;
+        const groundHeight = 50;
+
+        const worldThemes = {
+            jungle: { bg: '#2a5d34', ground: '#5d4a34', obstacle: '#8b4513' },
+            future: { bg: '#1a1a2e', ground: '#4a4e69', obstacle: '#e0e0e0' },
+            ice: { bg: '#a0d2eb', ground: '#ffffff', obstacle: '#6495ed' },
+            fire: { bg: '#4d0000', ground: '#200000', obstacle: '#ff4500' },
+        };
+
+        function generateObstacle() {
+            const height = Math.random() * 100 + 50;
+            const width = Math.random() * 30 + 20;
+            const type = Math.random() > 0.3 ? 'ground' : 'air';
+            
+            obstacles.push({
+                x: canvasWidth,
+                y: type === 'ground' ? canvasHeight - height - groundHeight : canvasHeight - height - groundHeight - 80,
+                width: width,
+                height: height,
+                color: worldThemes[worldType].obstacle
+            });
+        }
+
+        function handleObstacles() {
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obs = obstacles[i];
+                obs.x -= gameSpeed;
+                
+                ctx.fillStyle = obs.color;
+                ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+
+                // Collision detection
+                if (
+                    !player.isUltimateActive &&
+                    player.x < obs.x + obs.width &&
+                    player.x + player.width > obs.x &&
+                    player.y < obs.y + obs.height &&
+                    player.y + player.height > obs.y
+                ) {
+                    if (player.isDashing) {
+                        // Destroy obstacle if dashing
+                        obstacles.splice(i, 1);
+                        score += 10; // Bonus for dashing through
+                        player.chargeUltimate(5);
+                    } else {
+                        setGameOver();
+                    }
+                }
+
+                // Remove off-screen obstacles
+                if (obs.x + obs.width < 0) {
+                    obstacles.splice(i, 1);
+                }
+            }
+
+            if (gameFrame % 100 === 0 && Math.random() > 0.3) {
+                generateObstacle();
+            }
+        }
+        
+        function changeWorld() {
+            const worlds = Object.keys(worldThemes);
+            const currentIndex = worlds.indexOf(worldType);
+            let nextIndex = (currentIndex + 1) % worlds.length;
+            worldType = worlds[nextIndex];
+            worldChangeScore += 500;
+            // Simple visual flash for transition
+            gameContainer.style.borderColor = 'white';
+            setTimeout(() => { gameContainer.style.borderColor = 'var(--primary-color)'; }, 200);
+        }
+
+        // --- Game Loop ---
+        function animate(timestamp) {
+            if (gameState !== 'playing') return;
+
+            const deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+            
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+            // Draw Background
+            ctx.fillStyle = worldThemes[worldType].bg;
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+            // Draw Ground
+            ctx.fillStyle = worldThemes[worldType].ground;
+            ctx.fillRect(0, canvasHeight - groundHeight, canvasWidth, groundHeight);
+
+            // Update & Draw Player
+            player.update();
+            player.draw();
+
+            // Handle Obstacles
+            handleObstacles();
+
+            // Update Score & Speed
+            score += Math.floor(gameSpeed / 5);
+            gameSpeed += 0.001;
+            player.chargeUltimate(0.05);
+
+            // Update UI
+            scoreEl.textContent = `Score: ${score}`;
+            shardsEl.textContent = `Shards: ${shards}`;
+            ultimateBar.style.width = `${player.ultimateCharge}%`;
+            
+            // Change world
+            if (score > worldChangeScore) {
+                changeWorld();
+            }
+
+            gameFrame++;
+            requestAnimationFrame(animate);
+        }
+
+        // --- Game State Control ---
+        function startGame() {
+            resetGame();
+            gameState = 'playing';
+            mainMenu.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            inGameUI.classList.remove('hidden');
+            ultimateBarContainer.classList.remove('hidden');
+            lastTime = performance.now();
+            animate(lastTime);
+        }
+
+        function setGameOver() {
+            gameState = 'gameover';
+            finalScoreEl.textContent = `Final Score: ${score}`;
+            gameOverScreen.classList.remove('hidden');
+            inGameUI.classList.add('hidden');
+            ultimateBarContainer.classList.add('hidden');
+        }
+
+        function resetGame() {
+            player.y = canvasHeight - 100;
+            player.velocityY = 0;
+            player.grounded = true;
+            player.jumps = 2;
+            player.isDashing = false;
+            player.isUltimateActive = false;
+            player.ultimateCharge = 0;
+            obstacles = [];
+            score = 0;
+            gameSpeed = 5;
+            worldType = 'jungle';
+            worldChangeScore = 500;
+        }
+
+        // --- Event Listeners ---
+        startGameBtn.addEventListener('click', startGame);
+        restartGameBtn.addEventListener('click', startGame);
+
+        window.addEventListener('keydown', (e) => {
+            if (gameState !== 'playing') return;
+            
+            switch(e.code) {
+                case 'Space':
+                case 'ArrowUp':
+                    e.preventDefault();
+                    player.jump();
+                    break;
+                case 'KeyX':
+                case 'ShiftRight':
+                    e.preventDefault();
+                    player.dash();
+                    break;
+                case 'KeyC':
+                case 'ControlRight':
+                    e.preventDefault();
+                    player.activateUltimate();
+                    break;
+            }
+        });
+        
+        // Touch controls for mobile (simple implementation)
+        let touchStartY = 0;
+        let touchStartX = 0;
+        gameContainer.addEventListener('touchstart', (e) => {
+            if (gameState !== 'playing') return;
+            e.preventDefault();
+            touchStartY = e.changedTouches[0].clientY;
+            touchStartX = e.changedTouches[0].clientX;
+            // Simple tap to jump
+            player.jump();
+        }, { passive: false });
+
+        gameContainer.addEventListener('touchend', (e) => {
+            if (gameState !== 'playing') return;
+            e.preventDefault();
+            const touchEndY = e.changedTouches[0].clientY;
+            const touchEndX = e.changedTouches[0].clientX;
+            const swipeDistX = touchEndX - touchStartX;
+            const swipeDistY = touchEndY - touchStartY;
+
+            if (Math.abs(swipeDistX) > Math.abs(swipeDistY)) { // Horizontal swipe
+                if (swipeDistX > 50) { // Swipe right
+                    player.dash();
+                }
+            } else { // Vertical swipe
+                if (swipeDistY > 50) { // Swipe down
+                    // Future ability: slam
+                }
+            }
+        }, { passive: false });
+
+    </script>
 </body>
 </html>
